@@ -1,0 +1,2 @@
+{"name":"corthex-installer-acceptance","private":true,"dependencies":{"@playwright/test":"1.58.2"}}
+
