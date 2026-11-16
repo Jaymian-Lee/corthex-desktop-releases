@@ -1,0 +1,52 @@
+name: Validate Windows Installer
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Draft release ID in this binary repository
+        required: true
+        type: string
+      version:
+        description: Exact installer version
+        required: true
+        type: string
+      sha256:
+        description: Expected installer SHA-256
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: windows-installer-acceptance
+  cancel-in-progress: false
+jobs:
+  installed:
+    if: github.repository == 'Jaymian-Lee/corthex-desktop-releases' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 15
+    env:
+      QA_RELEASE_ID: ${{ inputs.release_id }}
+      QA_VERSION: ${{ inputs.version }}
+      QA_SHA256: ${{ inputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install pinned acceptance tools
+        run: yarn --cwd qa install --frozen-lockfile
+      - name: Download the draft candidate and verify its exact hash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node qa/download.mjs
+      - name: Install, verify real desktop behavior, and uninstall in the isolated VM
+        shell: pwsh
+        run: ./qa/install.ps1
+      - name: Save exact installer acceptance receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: installed-acceptance-${{ inputs.version }}
+          path: ${{ runner.temp }}/corthex-installer-acceptance/installed-acceptance.json
+          retention-days: 3
+          if-no-files-found: error
+
